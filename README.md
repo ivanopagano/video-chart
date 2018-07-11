@@ -44,9 +44,9 @@ For both requests there should be following error response format:
 ```json
 400 Bad Request
 { "errors": [
-    "email is not valid", "age is not valid",
+    "email is not valid",
+    "age is not valid",
     "gender is not valid",
-    "video does not correspond to last given",
     "video does not correspond to last given",
     "userId does not exist"
     ]
