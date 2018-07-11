@@ -12,7 +12,8 @@ lazy val `intro-task` =
         library.akkaHttp,
         library.akkaSprayJson,
         library.akkaStream,
-        library.scalaCheck % Test
+        library.akkaHttpTestkit % Test,
+        library.scalaTest % Test
       )
     )
 
@@ -26,11 +27,14 @@ lazy val library =
       val akka       = "2.5.13"
       val akkaHttp   = "10.1.3"
       val scalaCheck = "1.14.0"
+      val scalaTest  = "3.0.5"
     }
-    val akkaHttp      = "com.typesafe.akka" %% "akka-http"            % Version.akkaHttp
-    val akkaStream    = "com.typesafe.akka" %% "akka-stream"          % Version.akka
-    val akkaSprayJson = "com.typesafe.akka" %% "akka-http-spray-json" % Version.akkaHttp
-    val scalaCheck    = "org.scalacheck"    %% "scalacheck"           % Version.scalaCheck
+    val akkaHttp        = "com.typesafe.akka" %% "akka-http"            % Version.akkaHttp
+    val akkaStream      = "com.typesafe.akka" %% "akka-stream"          % Version.akka
+    val akkaSprayJson   = "com.typesafe.akka" %% "akka-http-spray-json" % Version.akkaHttp
+    val akkaHttpTestkit = "com.typesafe.akka" %% "akka-http-testkit"    % Version.akkaHttp
+    val scalaTest       = "org.scalatest"     %% "scalatest"            % Version.scalaTest
+    val scalaCheck      = "org.scalacheck"    %% "scalacheck"           % Version.scalaCheck
   }
 
 // *****************************************************************************
