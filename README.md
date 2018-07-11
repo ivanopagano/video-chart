@@ -10,7 +10,9 @@ There should be two requests with corresponding responses.
 
 ### Register user  
 request sould be of the following format:  
-`POST {"userName": "David", "email": "david@gmail.com", "age": 28, "gender": 1}`
+```json
+POST {"userName": "David", "email": "david@gmail.com", "age": 28, "gender": 1}
+```
 
 Request sould be validated:
 - email
@@ -18,11 +20,15 @@ Request sould be validated:
 - gender in `[1, 2]`, where `1` for male, `2` for female
 
 Respose should be of format:  
-`200 OK { "userId": 9797345L, "videoId":4324556L }`
+```json
+200 OK { "userId": 9797345L, "videoId":4324556L }
+```
 
 ### Action  
 Action is a response to Register, reaction on sent video.  
-`POST {"userId": 9797345L, "videoId":4324556L, "actionId": 3}`
+```json
+POST {"userId": 9797345L, "videoId":4324556L, "actionId": 3}
+```
 
 where `userId` and `videoId` correspond to `Register` response.
 

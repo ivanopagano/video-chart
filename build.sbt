@@ -9,8 +9,10 @@ lazy val `intro-task` =
     .settings(settings)
     .settings(
       libraryDependencies ++= Seq(
-        library.scalaCheck % Test,
-        library.utest      % Test
+        library.akkaHttp,
+        library.akkaSprayJson,
+        library.akkaStream,
+        library.scalaCheck % Test
       )
     )
 
@@ -21,11 +23,14 @@ lazy val `intro-task` =
 lazy val library =
   new {
     object Version {
+      val akka       = "2.5.13"
+      val akkaHttp   = "10.1.3"
       val scalaCheck = "1.14.0"
-      val utest      = "0.6.4"
     }
-    val scalaCheck = "org.scalacheck" %% "scalacheck" % Version.scalaCheck
-    val utest      = "com.lihaoyi"    %% "utest"      % Version.utest
+    val akkaHttp      = "com.typesafe.akka" %% "akka-http"            % Version.akkaHttp
+    val akkaStream    = "com.typesafe.akka" %% "akka-stream"          % Version.akka
+    val akkaSprayJson = "com.typesafe.akka" %% "akka-http-spray-json" % Version.akkaHttp
+    val scalaCheck    = "org.scalacheck"    %% "scalacheck"           % Version.scalaCheck
   }
 
 // *****************************************************************************
