@@ -12,6 +12,7 @@ lazy val `intro-task` =
         library.akkaHttp,
         library.akkaSprayJson,
         library.akkaStream,
+        library.cats,
         library.akkaHttpTestkit % Test,
         library.scalaTest % Test
       )
@@ -21,6 +22,7 @@ lazy val `intro-task` =
 // Library dependencies
 // *****************************************************************************
 
+
 lazy val library =
   new {
     object Version {
@@ -28,11 +30,13 @@ lazy val library =
       val akkaHttp   = "10.1.3"
       val scalaCheck = "1.14.0"
       val scalaTest  = "3.0.5"
+      val cats       = "1.1.0"
     }
     val akkaHttp        = "com.typesafe.akka" %% "akka-http"            % Version.akkaHttp
     val akkaStream      = "com.typesafe.akka" %% "akka-stream"          % Version.akka
     val akkaSprayJson   = "com.typesafe.akka" %% "akka-http-spray-json" % Version.akkaHttp
     val akkaHttpTestkit = "com.typesafe.akka" %% "akka-http-testkit"    % Version.akkaHttp
+    val cats            = "org.typelevel"     %% "cats-core"            % Version.cats
     val scalaTest       = "org.scalatest"     %% "scalatest"            % Version.scalaTest
     val scalaCheck      = "org.scalacheck"    %% "scalacheck"           % Version.scalaCheck
   }

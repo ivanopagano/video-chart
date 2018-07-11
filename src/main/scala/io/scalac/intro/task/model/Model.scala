@@ -22,8 +22,9 @@
 package io.scalac.intro.task.model
 
 sealed trait Gender
-final case object Male   extends Gender
-final case object Female extends Gender
+final case object Male    extends Gender
+final case object Female  extends Gender
+final case object Unknown extends Gender
 
 final case class UserId(id: Long)  extends AnyVal
 final case class VideoId(id: Long) extends AnyVal

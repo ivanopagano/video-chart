@@ -31,10 +31,12 @@ trait JsonProtocols extends SprayJsonSupport with DefaultJsonProtocol {
     override lazy val toModel = {
       case 1 => Male
       case 2 => Female
+      case _ => Unknown
     }
     override lazy val fromModel = {
-      case Male   => 1
-      case Female => 2
+      case Male    => 1
+      case Female  => 2
+      case Unknown => serializationError("gender is not specified")
     }
   }
 
