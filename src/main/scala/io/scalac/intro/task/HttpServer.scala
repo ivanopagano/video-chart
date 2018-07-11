@@ -25,8 +25,8 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
+import io.scalac.intro.task.marshalling.JsonProtocols
 import io.scalac.intro.task.model._
-import io.scalac.intro.task.marshalling._
 import scala.concurrent.duration._
 
 object HttpServer extends App with JsonProtocols {
@@ -34,7 +34,9 @@ object HttpServer extends App with JsonProtocols {
   implicit val system = ActorSystem("xite")
   implicit val mat    = ActorMaterializer()
 
-  val route =
+  implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
+
+  def route =
     post {
       path("register") {
         entity(as[Command.RegisterUser]) { usr =>
@@ -51,12 +53,8 @@ object HttpServer extends App with JsonProtocols {
   val binding = Http().bindAndHandle(route, "localhost", 8085)
 
   println("Server running, press enter to stop...")
-  val _ = scala.io.StdIn.readLine()
+  scala.io.StdIn.readLine()
 
-  //bring an execution context in scope
-  implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
-
-  val done =
   binding.flatMap(
     _.terminate(5 seconds)
   ) andThen {
