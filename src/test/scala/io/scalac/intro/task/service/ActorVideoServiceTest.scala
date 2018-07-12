@@ -24,18 +24,15 @@ package io.scalac.intro.task.service
 import org.scalatest.{ BeforeAndAfterAll, Matchers, WordSpecLike }
 import org.scalatest.concurrent.ScalaFutures
 import akka.actor._
-import akka.pattern.ask
-import akka.util.Timeout
-import akka.testkit.{ TestKit }
-import cats.data.{ NonEmptyList, Validated }
-import cats.data.Validated.{ Invalid, Valid }
-import io.scalac.intro.task.service._
+import akka.testkit.{ ImplicitSender, TestKit }
+import cats.data.Validated.Valid
+import cats.syntax.validated._
 import io.scalac.intro.task.model._
-import io.scalac.intro.task.service.ActorVideoService.{ ActionMessage, RegisterMessage }
-import scala.concurrent.duration._
+import io.scalac.intro.task.service.ActorVideoService._
 
 class ActorVideoServiceTest
     extends TestKit(ActorSystem("VideoServiceTest"))
+    with ImplicitSender
     with WordSpecLike
     with Matchers
     with ScalaFutures
@@ -45,52 +42,90 @@ class ActorVideoServiceTest
     TestKit.shutdownActorSystem(system)
   }
 
-  "A UserRegistry actor " should {
+  "A UserRegistry actor" should {
 
     "register a new user" in withRegistryActor { registry =>
-      implicit val timeout = Timeout(100 millis)
+      val cmd = Command.RegisterUser("name", "email@host.org", 18, Male)
+      registry ! RegisterMessage(cmd)
 
-      val cmd    = Command.RegisterUser("name", "email@host.org", 18, Male)
-      val answer = registry ? RegisterMessage(cmd)
-
-      answer.futureValue shouldBe an[Valid[Outcome.Confirmed]]
+      expectMsgClass(classOf[Valid[Outcome.Confirmed]])
 
     }
 
     "return the same response when a user registers again an existing email (idempotent calls)" in withRegistryActor {
       registry =>
-        implicit val timeout = Timeout(100 millis)
+        val cmd = Command.RegisterUser("name", "email@host.org", 18, Male)
+        registry ! RegisterMessage(cmd)
 
-        val cmd    = Command.RegisterUser("name", "email@host.org", 18, Male)
-        val answer = registry ? RegisterMessage(cmd)
+        val first = expectMsgClass(classOf[Valid[Outcome.Confirmed]])
 
-        val response = answer.futureValue
+        registry ! RegisterMessage(cmd)
 
-        response shouldBe an[Valid[Outcome.Confirmed]]
+        val second = expectMsgClass(classOf[Valid[Outcome.Confirmed]])
 
-        (registry ? RegisterMessage(cmd)).futureValue shouldEqual response
+        second shouldEqual first
 
     }
 
     "reject an action for non-matching user id" in withRegistryActor { registry =>
-      implicit val timeout = Timeout(100 millis)
+      val action   = Command.Action(UserId(1), VideoId(1), Like)
+      val expected = CommandValidation.NonExistingUserId.invalidNel
 
-      val action = Command.Action(UserId(1), VideoId(1), Like)
-      val answer = registry ? ActionMessage(action)
+      registry ! ActionMessage(action)
 
-      answer.futureValue match {
-        case Valid(_) =>
-          fail("the action should have failed if the user is not registered")
-        case Invalid(errors @ NonEmptyList(_, _)) =>
-          errors.toList should contain(CommandValidation.NonExistingUserId)
-      }
+      expectMsg(expected)
     }
 
   }
 
-  private def withRegistryActor(testBody: ActorRef => Any): Any = {
-    val actor = system.actorOf(Props[UserRegistry])
+  "An ActionHandler actor" should {
 
+    "respond to a current video request with the correct user id" in withActionHandlerActor(
+      UserId(1L)
+    ) { handler =>
+      handler ! CurrentVideo(testActor)
+
+      val confirm = expectMsgClass(classOf[Valid[Outcome.Confirmed]])
+
+      confirm.a.userId shouldEqual UserId(1L)
+    }
+
+    "respond to consecutive video requests with the same message" in withActionHandlerActor(
+      UserId(1L)
+    ) { handler =>
+      handler ! CurrentVideo(testActor)
+
+      val confirm = expectMsgClass(classOf[Valid[Outcome.Confirmed]])
+
+      handler ! CurrentVideo(testActor)
+
+      expectMsg(confirm)
+    }
+
+    "reject video actions where the video id doesn't match the current video" in withActionHandlerActor(
+      UserId(1L)
+    ) { handler =>
+      handler ! CurrentVideo(testActor)
+
+      val currentVideo = expectMsgClass(classOf[Valid[Outcome.Confirmed]]).a.videoId
+
+      val action   = Command.Action(UserId(1), VideoId(currentVideo.id + 1), Like)
+      val expected = CommandValidation.InvalidAction.invalidNel
+      handler ! ActionMessage(action)
+
+      expectMsg(expected)
+    }
+
+  }
+
+  private def withRegistryActor(testBody: ActorRef => Any): Any =
+    withActor(Props[UserRegistry], testBody)
+
+  private def withActionHandlerActor(id: UserId)(testBody: ActorRef => Any): Any =
+    withActor(ActionHandler.props(id), testBody)
+
+  private def withActor(props: Props, testBody: ActorRef => Any): Any = {
+    val actor = system.actorOf(props)
     try {
       testBody(actor)
     } finally {

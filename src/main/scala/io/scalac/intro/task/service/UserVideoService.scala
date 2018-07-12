@@ -44,7 +44,8 @@ class ActorVideoService(implicit system: ActorSystem) extends UserVideoService {
   override def register(cmd: RegisterUser): Future[RegistrationResponse] =
     (registry ? RegisterMessage(cmd)).mapTo[RegistrationResponse]
 
-  override def act(action: Action): Future[ActionResponse] = ???
+  override def act(action: Action): Future[ActionResponse] =
+    (registry ? ActionMessage(action)).mapTo[ActionResponse]
 }
 
 object ActorVideoService {
@@ -75,34 +76,42 @@ class UserRegistry extends Actor {
           .find(_.path.name == email)
           .getOrElse {
             val userId     = newId()
-            val newHandler = context.actorOf(UserHandler.props(userId), email)
+            val newHandler = context.actorOf(ActionHandler.props(userId), email)
             registry = registry + (userId -> newHandler)
             newHandler
           }
 
       handler ! CurrentVideo(replyTo = sender)
-      case msg @ ActionMessage(Action(uid, vid, action)) =>
+    case msg @ ActionMessage(Action(uid, vid, action)) =>
       registry.get(uid) match {
-        case Some(handler) => handler forward msg
-        case None => sender ! CommandValidation.NonExistingUserId.invalidNel
+        case Some(handler) =>
+          handler forward msg
+        case None =>
+          sender ! CommandValidation.NonExistingUserId.invalidNel
       }
 
   }
 
 }
 
-class UserHandler(id: UserId) extends Actor {
+class ActionHandler(id: UserId) extends Actor {
   import ActorVideoService._
+
+  var currentVideo = 1L
+  var nextVideo    = currentVideo + 1
 
   override def receive = {
     case CurrentVideo(replyTo) =>
-      replyTo ! Outcome.Confirmed(id, VideoId(1L)).valid[Outcome.RegistrationError]
+      replyTo ! Outcome.Confirmed(id, VideoId(currentVideo)).valid[Outcome.RegistrationError]
+    case ActionMessage(Action(_, video, _)) if video.id != currentVideo =>
+      sender ! CommandValidation.InvalidAction.invalidNel
+
   }
 
 }
 
-object UserHandler {
+object ActionHandler {
 
-  def props(id: UserId) = Props(new UserHandler(id))
+  def props(id: UserId) = Props(new ActionHandler(id))
 
 }
