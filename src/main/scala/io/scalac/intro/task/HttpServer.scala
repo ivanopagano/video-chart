@@ -23,11 +23,16 @@ package io.scalac.intro.task
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import io.scalac.intro.task.marshalling.JsonProtocols
 import io.scalac.intro.task.model._
+import io.scalac.intro.task.model.CommandValidation.InvalidInput
 import scala.concurrent.duration._
+import spray.json._
+import cats.data.NonEmptyList
+import cats.data.Validated.{ Invalid, Valid }
 
 object HttpServer extends App with JsonProtocols {
 
@@ -36,11 +41,24 @@ object HttpServer extends App with JsonProtocols {
 
   implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
+  def collectErrors(list: NonEmptyList[InvalidInput]): JsObject =
+    JsObject(
+      "errors" -> JsArray(list.map(err => JsString(err.detail)).toList: _*)
+    )
+
   def route =
     post {
       path("register") {
         entity(as[Command.RegisterUser]) { usr =>
-          complete(Outcome.Confirmed(UserId(1L), VideoId(1L)))
+          complete {
+            CommandValidation.verifyUserRegistration(usr) match {
+              case Valid(userData) =>
+                Outcome.Confirmed(UserId(1L), VideoId(1L))
+              case Invalid(reasons) =>
+                BadRequest -> collectErrors(reasons)
+            }
+
+          }
         }
       } ~
       path("action") {

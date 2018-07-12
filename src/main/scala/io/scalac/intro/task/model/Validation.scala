@@ -26,7 +26,7 @@ import cats.implicits._
 import cats.syntax.applicative._
 import cats.instances.tuple._
 
-trait Validation {
+object CommandValidation {
 
   //the list of possible validation failures
 
@@ -59,6 +59,8 @@ trait Validation {
 
   //verification methods
 
+  //we're simplifying a bit, assuming that no null input is sent to verification
+
   private def in(low: Int, high: Int) = (input: Int) => input >= low && input <= high
 
   private val ageRange    = in(5, 120)
@@ -70,8 +72,10 @@ trait Validation {
 
   //non RFC-compliant (!)
   protected def verifyEmail(email: String): Verified[String] =
-    if (email.matches("""^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,6}$""")) email.validNel
-    else InvalidEmail.invalidNel
+    if (email.trim.toUpperCase.matches("""^[A-Z0-9\._%\+\-]+@[A-Z0-9\.\-]+\.[A-Z]{2,6}$"""))
+      email.validNel
+    else
+      InvalidEmail.invalidNel
 
   protected def verifyAge(age: Int): Verified[Int] =
     if (ageRange(age)) age.validNel else InvalidAge.invalidNel
@@ -88,6 +92,10 @@ trait Validation {
     (verifyUserName(userName), verifyEmail(email), verifyAge(age), verifyGender(gender))
       .mapN(Command.RegisterUser)
 
-}
+  def verifyUserRegistration(userCommand: Command.RegisterUser): Verified[Command.RegisterUser] =
+    verifyUserRegistration(userCommand.userName,
+                           userCommand.email,
+                           userCommand.age,
+                           userCommand.gender)
 
-object Validation extends Validation
+}

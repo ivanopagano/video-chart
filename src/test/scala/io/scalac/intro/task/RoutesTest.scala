@@ -27,7 +27,7 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.server._
 import spray.json._
-import io.scalac.intro.task.model.Outcome
+import io.scalac.intro.task.model.{ CommandValidation, Outcome }
 
 class RoutesTest
     extends WordSpec
@@ -181,6 +181,35 @@ class RoutesTest
 
       Post("/action", nouser) ~> Route.seal(sut) ~> check {
         status shouldBe StatusCodes.BadRequest
+      }
+    }
+
+    "respond with Bad Request for incorrect fields in the /register endpoint, accumulating errors" in {
+
+      val wrongGender = JsObject(
+        "userName" -> JsString(""),
+        "email"    -> JsString("david@gmail"),
+        "age"      -> JsNumber(2),
+        "gender"   -> JsNumber(4)
+      )
+
+      val expectedErrors = Vector(
+        CommandValidation.EmptyUserName.detail,
+        CommandValidation.InvalidEmail.detail,
+        CommandValidation.InvalidAge.detail,
+        CommandValidation.InvalidGender.detail
+      ).map(JsString(_))
+
+      Post("/register", wrongGender) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+        val fields = entityAs[JsObject].fields
+        val errors = fields.get("errors").value
+        errors match {
+          case JsArray(messages) =>
+            messages should contain theSameElementsAs expectedErrors
+          case _ => fail("wrong type of json content in errors message")
+        }
       }
     }
   }
