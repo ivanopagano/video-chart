@@ -41,5 +41,5 @@ object Command {
 
 object Outcome {
   final case class Confirmed(userId: UserId, videoId: VideoId)
-  final case class Error(detail: String)
+  final case class RegistrationError(detail: String)
 }

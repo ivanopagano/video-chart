@@ -29,7 +29,11 @@ package object service {
 
   trait UserVideoService {
 
-    def register(cmd: Command.RegisterUser): Future[Validated[Outcome.Error, Outcome.Confirmed]]
+    def register(
+        cmd: Command.RegisterUser
+    ): Future[Validated[Outcome.RegistrationError, Outcome.Confirmed]]
+
+    def act(action: Command.Action): Future[CommandValidation.Verified[Outcome.Confirmed]]
 
   }
 

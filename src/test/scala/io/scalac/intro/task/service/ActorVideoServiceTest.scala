@@ -27,11 +27,11 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.testkit.{ TestKit }
-import cats.data.Validated
+import cats.data.{ NonEmptyList, Validated }
 import cats.data.Validated.{ Invalid, Valid }
 import io.scalac.intro.task.service._
 import io.scalac.intro.task.model._
-import io.scalac.intro.task.service.ActorVideoService.RegisterMessage
+import io.scalac.intro.task.service.ActorVideoService.{ ActionMessage, RegisterMessage }
 import scala.concurrent.duration._
 
 class ActorVideoServiceTest
@@ -53,13 +53,7 @@ class ActorVideoServiceTest
       val cmd    = Command.RegisterUser("name", "email@host.org", 18, Male)
       val answer = registry ? RegisterMessage(cmd)
 
-      val response = answer.futureValue
-
-      response match {
-        case Valid(Outcome.Confirmed(UserId(uid), VideoId(vid))) =>
-        case Invalid(error) =>
-          fail(s"unexpectd registration error: $error")
-      }
+      answer.futureValue shouldBe an[Valid[Outcome.Confirmed]]
 
     }
 
@@ -76,6 +70,20 @@ class ActorVideoServiceTest
 
         (registry ? RegisterMessage(cmd)).futureValue shouldEqual response
 
+    }
+
+    "reject an action for non-matching user id" in withRegistryActor { registry =>
+      implicit val timeout = Timeout(100 millis)
+
+      val action = Command.Action(UserId(1), VideoId(1), Like)
+      val answer = registry ? ActionMessage(action)
+
+      answer.futureValue match {
+        case Valid(_) =>
+          fail("the action should have failed if the user is not registered")
+        case Invalid(errors @ NonEmptyList(_, _)) =>
+          errors.toList should contain(CommandValidation.NonExistingUserId)
+      }
     }
 
   }

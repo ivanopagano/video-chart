@@ -34,21 +34,24 @@ import scala.concurrent.Future
 class ActorVideoService(implicit system: ActorSystem) extends UserVideoService {
   import ActorVideoService._
 
-  type Response = Validated[Outcome.Error, Outcome.Confirmed]
+  type RegistrationResponse = Validated[Outcome.RegistrationError, Outcome.Confirmed]
+  type ActionResponse       = CommandValidation.Verified[Outcome.Confirmed]
 
   lazy val registry: ActorRef = system.actorOf(Props[UserRegistry], "user-registry")
 
   implicit val timeout = Timeout(1 second)
 
-  override def register(cmd: RegisterUser): Future[Response] =
-    (registry ? RegisterMessage(cmd)).mapTo[Response]
+  override def register(cmd: RegisterUser): Future[RegistrationResponse] =
+    (registry ? RegisterMessage(cmd)).mapTo[RegistrationResponse]
+
+  override def act(action: Action): Future[ActionResponse] = ???
 }
 
 object ActorVideoService {
 
   final case class RegisterMessage(reg: RegisterUser) extends Serializable
-  final case class CurrentVideo(replyTo: ActorRef)    extends Serializable
   final case class ActionMessage(act: Action)         extends Serializable
+  final case class CurrentVideo(replyTo: ActorRef)    extends Serializable
 
 }
 
@@ -78,6 +81,12 @@ class UserRegistry extends Actor {
           }
 
       handler ! CurrentVideo(replyTo = sender)
+      case msg @ ActionMessage(Action(uid, vid, action)) =>
+      registry.get(uid) match {
+        case Some(handler) => handler forward msg
+        case None => sender ! CommandValidation.NonExistingUserId.invalidNel
+      }
+
   }
 
 }
@@ -87,7 +96,7 @@ class UserHandler(id: UserId) extends Actor {
 
   override def receive = {
     case CurrentVideo(replyTo) =>
-      replyTo ! Outcome.Confirmed(id, VideoId(1L)).valid[Outcome.Error]
+      replyTo ! Outcome.Confirmed(id, VideoId(1L)).valid[Outcome.RegistrationError]
   }
 
 }
