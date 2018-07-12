@@ -136,11 +136,13 @@ class ActorVideoServiceTest
 
   }
 
+  private val playlist: List[VideoId] = (1L to 10L).map(VideoId).toList
+
   private def withRegistryActor(testBody: ActorRef => Any): Any =
-    withActor(Props[UserRegistry], testBody)
+    withActor(UserRegistry.props(playlist), testBody)
 
   private def withActionHandlerActor(id: UserId)(testBody: ActorRef => Any): Any =
-    withActor(ActionHandler.props(id), testBody)
+    withActor(ActionHandler.props(id, playlist), testBody)
 
   private def withActor(props: Props, testBody: ActorRef => Any): Any = {
     val actor = system.actorOf(props)

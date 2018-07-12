@@ -29,12 +29,12 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import io.scalac.intro.task.marshalling.JsonProtocols
 import io.scalac.intro.task.model._
-import io.scalac.intro.task.service.{ ActorVideoService, UserVideoService }
+import io.scalac.intro.task.service.{ ActorVideoService, Playlist, UserVideoService }
 import cats.data.Validated.{ Invalid, Valid }
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-object HttpServer extends App {
+object HttpServer extends App with Playlist {
 
   implicit val system = ActorSystem("xite")
   implicit val mat    = ActorMaterializer()

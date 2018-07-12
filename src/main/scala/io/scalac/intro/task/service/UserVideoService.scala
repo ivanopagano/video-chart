@@ -30,11 +30,12 @@ import io.scalac.intro.task.model.Command._
 import scala.concurrent.duration._
 import scala.concurrent.Future
 
-class ActorVideoService(implicit system: ActorSystem) extends UserVideoService {
+class ActorVideoService(implicit playlist: List[VideoId], system: ActorSystem)
+    extends UserVideoService {
   import ActorVideoService._
   import UserVideoService._
 
-  val registry = system.actorOf(Props[UserRegistry], "user-registry")
+  val registry = system.actorOf(UserRegistry.props(playlist), "user-registry")
 
   implicit val timeout = Timeout(1 second)
 
@@ -53,7 +54,7 @@ object ActorVideoService {
 
 }
 
-class UserRegistry extends Actor {
+class UserRegistry(playlist: List[VideoId]) extends Actor {
   import ActorVideoService._
   import scala.collection.immutable.HashMap
 
@@ -73,7 +74,7 @@ class UserRegistry extends Actor {
           .find(_.path.name == email)
           .getOrElse {
             val userId     = newId()
-            val newHandler = context.actorOf(ActionHandler.props(userId), email)
+            val newHandler = context.actorOf(ActionHandler.props(userId, playlist), email)
             registry = registry + (userId -> newHandler)
             newHandler
           }
@@ -90,6 +91,10 @@ class UserRegistry extends Actor {
 
   }
 
+}
+
+object UserRegistry {
+  def props(playlist: List[VideoId]): Props = Props(new UserRegistry(playlist))
 }
 
 class ActionHandler(id: UserId, chart: ActionHandler.PlayChart) extends Actor with ActorLogging {
@@ -122,18 +127,20 @@ object ActionHandler {
     def report: String
   }
 
-  def props(id: UserId) = Props(new ActionHandler(id, new PriorityChart))
+  def props(id: UserId, playlist: List[VideoId]) =
+    Props(new ActionHandler(id, new PriorityChart(playlist)))
 
-  private class PriorityChart extends PlayChart {
+  private class PriorityChart(playlist: List[VideoId]) extends PlayChart {
     import scala.collection.mutable.PriorityQueue
-    import scala.math.{ Ordering, abs }
+    import scala.math.Ordering
+    import scala.util.Random.shuffle
 
     private[this] case class ChartEntry(id: VideoId, played: Int)
 
     implicit private[this] val chartOrdering: Ordering[ChartEntry] =
       Ordering.by((_: ChartEntry).played).reverse
 
-    private[this] val queue: PriorityQueue[ChartEntry] = PriorityQueue(fillChart(): _*)
+    private[this] val queue: PriorityQueue[ChartEntry] = PriorityQueue(fillChart(playlist): _*)
 
     override def nextVideo() = {
       val next = queue.dequeue
@@ -144,10 +151,19 @@ object ActionHandler {
     override def report =
       queue.clone.dequeueAll.mkString("\n")
 
-    private[this] def fillChart() =
-      List
-        .fill(10)(abs(scala.util.Random.nextLong))
-        .map(id => ChartEntry(VideoId(id), played = 0))
+    private[this] def fillChart(playlist: List[VideoId]) =
+      shuffle(playlist).map(id => ChartEntry(id, played = 0))
   }
+
+}
+
+trait Playlist {
+  import scala.math.abs
+  import scala.util.Random.nextLong
+
+  implicit def videos: List[VideoId] =
+    List
+      .fill(10)(abs(nextLong))
+      .map(VideoId)
 
 }
