@@ -29,7 +29,6 @@ lazy val library =
     object Version {
       val akka       = "2.5.13"
       val akkaHttp   = "10.1.3"
-      val scalaCheck = "1.14.0"
       val scalaTest  = "3.0.5"
       val cats       = "1.1.0"
     }
@@ -40,7 +39,6 @@ lazy val library =
     val akkaHttpTestkit = "com.typesafe.akka" %% "akka-http-testkit"    % Version.akkaHttp
     val cats            = "org.typelevel"     %% "cats-core"            % Version.cats
     val scalaTest       = "org.scalatest"     %% "scalatest"            % Version.scalaTest
-    val scalaCheck      = "org.scalacheck"    %% "scalacheck"           % Version.scalaCheck
   }
 
 // *****************************************************************************
