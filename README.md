@@ -4,7 +4,7 @@ Welcome to xite intro-task! 🤩
 
 ## The rules of the game ##
 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------
 Implement RESTful service with Akka, Akka HTTP, Cats which serves as a very high level recommendation system.
 There should be two requests with corresponding responses.
 
@@ -74,7 +74,11 @@ Application should be build with SBT, and latest versions of Scala and libraries
 
 After `sbt run` application should be up and running on http://localhost:8085 `[/register]` and `[/action]`.
 
-——————————————————
+------------------------------------------------------------------------
+## Notes ##
+
+The project took around _22 hours_ of work to reach this stage, as of _2018-07-12_
+
 ## License ##
 
 This code is open source software licensed under the
