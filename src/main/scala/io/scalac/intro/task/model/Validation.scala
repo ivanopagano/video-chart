@@ -23,8 +23,6 @@ package io.scalac.intro.task.model
 
 import cats.data._
 import cats.implicits._
-import cats.syntax.applicative._
-import cats.instances.tuple._
 
 object CommandValidation {
 

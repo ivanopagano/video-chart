@@ -19,27 +19,18 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package io.scalac.intro.task.model
+package io.scalac.intro.task
 
-sealed trait Gender
-final case object Male    extends Gender
-final case object Female  extends Gender
-final case object Unknown extends Gender
+import cats.data.Validated
+import io.scalac.intro.task.model._
+import scala.concurrent.Future
 
-final case class UserId(id: Long)  extends AnyVal
-final case class VideoId(id: Long) extends AnyVal
+package object service {
 
-sealed trait ActionId
-final case object Like extends ActionId
-final case object Skip extends ActionId
-final case object Play extends ActionId
+  trait UserVideoService {
 
-object Command {
-  final case class RegisterUser(userName: String, email: String, age: Int, gender: Gender)
-  final case class Action(userId: UserId, videoId: VideoId, actionId: ActionId)
-}
+    def register(cmd: Command.RegisterUser): Future[Validated[Outcome.Error, Outcome.Confirmed]]
 
-object Outcome {
-  final case class Confirmed(userId: UserId, videoId: VideoId)
-  final case class Error(detail: String)
+  }
+
 }
