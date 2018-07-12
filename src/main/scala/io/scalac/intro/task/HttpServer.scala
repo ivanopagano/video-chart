@@ -24,51 +24,26 @@ package io.scalac.intro.task
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import io.scalac.intro.task.marshalling.JsonProtocols
 import io.scalac.intro.task.model._
-import io.scalac.intro.task.model.CommandValidation.InvalidInput
-import scala.concurrent.duration._
-import spray.json._
-import cats.data.NonEmptyList
+import io.scalac.intro.task.service.{ ActorVideoService, UserVideoService }
 import cats.data.Validated.{ Invalid, Valid }
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
-object HttpServer extends App with JsonProtocols {
+object HttpServer extends App {
 
   implicit val system = ActorSystem("xite")
   implicit val mat    = ActorMaterializer()
 
   implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
-  def collectErrors(list: NonEmptyList[InvalidInput]): JsObject =
-    JsObject(
-      "errors" -> JsArray(list.map(err => JsString(err.detail)).toList: _*)
-    )
+  lazy val service = new ActorVideoService
 
-  def route =
-    post {
-      path("register") {
-        entity(as[Command.RegisterUser]) { usr =>
-          complete {
-            CommandValidation.verifyUserRegistration(usr) match {
-              case Valid(userData) =>
-                Outcome.Confirmed(UserId(1L), VideoId(1L))
-              case Invalid(reasons) =>
-                BadRequest -> collectErrors(reasons)
-            }
-
-          }
-        }
-      } ~
-      path("action") {
-        entity(as[Command.Action]) { action =>
-          complete(Outcome.Confirmed(UserId(1L), VideoId(1L)))
-        }
-      }
-    }
-
-  val binding = Http().bindAndHandle(route, "localhost", 8085)
+  val binding = Http().bindAndHandle(Routing.route(service), "localhost", 8085)
 
   println("Server running, press enter to stop...")
   scala.io.StdIn.readLine()
@@ -79,5 +54,36 @@ object HttpServer extends App with JsonProtocols {
     case _ =>
       system.terminate()
   }
+
+}
+
+object Routing extends JsonProtocols {
+
+  def route(videoService: UserVideoService)(implicit ec: ExecutionContext): Route =
+    post {
+      path("register") {
+        entity(as[Command.RegisterUser]) { usr =>
+          complete {
+            CommandValidation.verifyUserRegistration(usr) match {
+              case Valid(userData) =>
+                videoService.register(userData) map { res =>
+                  res.leftMap(err => InternalServerError -> registrationFailure(err)).toEither
+                }
+              case Invalid(reasons) =>
+                BadRequest -> collectErrors(reasons)
+            }
+          }
+        }
+      } ~
+      path("action") {
+        entity(as[Command.Action]) { action =>
+          complete {
+            videoService.act(action) map { res =>
+              res.leftMap(errs => BadRequest -> collectErrors(errs)).toEither
+            }
+          }
+        }
+      }
+    }
 
 }

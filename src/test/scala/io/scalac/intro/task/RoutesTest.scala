@@ -22,12 +22,15 @@
 package io.scalac.intro.task
 
 import org.scalatest.{ Matchers, OptionValues, WordSpec }
+import cats.syntax.validated._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.server._
+import scala.concurrent.Future
 import spray.json._
-import io.scalac.intro.task.model.{ CommandValidation, Outcome }
+import io.scalac.intro.task.model._
+import io.scalac.intro.task.service.UserVideoService
 
 class RoutesTest
     extends WordSpec
@@ -36,11 +39,34 @@ class RoutesTest
     with ScalatestRouteTest
     with marshalling.JsonProtocols {
 
-  val sut = HttpServer.route
+  val MissingUser      = UserId(0)
+  val CurrentlyPlaying = VideoId(1)
+
+  val videoService = new UserVideoService {
+    val standardOutcome = Outcome.Confirmed(UserId(1), CurrentlyPlaying)
+
+    override def register(cmd: Command.RegisterUser) =
+      Future.successful(standardOutcome.valid[Outcome.RegistrationError])
+
+    override def act(action: Command.Action) = {
+      val outcome = action match {
+        case Command.Action(MissingUser, _, _) =>
+          CommandValidation.NonExistingUserId.invalidNel
+        case Command.Action(_, CurrentlyPlaying, _) =>
+          standardOutcome.validNel
+        case _ =>
+          CommandValidation.InvalidAction.invalidNel
+      }
+      Future.successful(outcome)
+    }
+
+  }
+
+  val sut = Routing.route(videoService)
 
   "The server" when {
 
-    "receiving a wrong method" should {
+    "receiving a call with the wrong http-method" should {
       "behave accordingly" in {
 
         Get() ~> Route.seal(sut) ~> check {
@@ -85,7 +111,7 @@ class RoutesTest
 
         val json = JsObject(
           "userId"   -> JsNumber(9696345L),
-          "videoId"  -> JsNumber(4324556L),
+          "videoId"  -> JsNumber(CurrentlyPlaying.id),
           "actionId" -> JsNumber(3)
         )
 
@@ -93,6 +119,48 @@ class RoutesTest
           status shouldBe StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
           entityAs[Outcome.Confirmed] shouldBe an[Outcome.Confirmed]
+        }
+      }
+
+      "respond with Bad Request if /action is called with an non-existing user" in {
+
+        val json = JsObject(
+          "userId"   -> JsNumber(MissingUser.id),
+          "videoId"  -> JsNumber(4324556L),
+          "actionId" -> JsNumber(3)
+        )
+
+        Post("/action", json) ~> sut ~> check {
+          status shouldBe StatusCodes.BadRequest
+          contentType shouldBe ContentTypes.`application/json`
+          val fields = entityAs[JsObject].fields
+          val errors = fields.get("errors").value
+          errors match {
+            case JsArray(messages) =>
+              messages should contain(JsString(CommandValidation.NonExistingUserId.detail))
+            case _ => fail("wrong type of json content in errors message")
+          }
+        }
+      }
+
+      "respond with Bad Request if /action is called with a video not currently being played" in {
+
+        val json = JsObject(
+          "userId"   -> JsNumber(9696345L),
+          "videoId"  -> JsNumber(4324556L),
+          "actionId" -> JsNumber(3)
+        )
+
+        Post("/action", json) ~> sut ~> check {
+          status shouldBe StatusCodes.BadRequest
+          contentType shouldBe ContentTypes.`application/json`
+          val fields = entityAs[JsObject].fields
+          val errors = fields.get("errors").value
+          errors match {
+            case JsArray(messages) =>
+              messages should contain(JsString(CommandValidation.InvalidAction.detail))
+            case _ => fail("wrong type of json content in errors message")
+          }
         }
       }
     }

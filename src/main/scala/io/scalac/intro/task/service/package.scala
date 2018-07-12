@@ -27,13 +27,17 @@ import scala.concurrent.Future
 
 package object service {
 
+  object UserVideoService {
+    type RegistrationResponse = Validated[Outcome.RegistrationError, Outcome.Confirmed]
+    type ActionResponse       = CommandValidation.Verified[Outcome.Confirmed]
+  }
+
   trait UserVideoService {
+    import UserVideoService._
 
-    def register(
-        cmd: Command.RegisterUser
-    ): Future[Validated[Outcome.RegistrationError, Outcome.Confirmed]]
+    def register(cmd: Command.RegisterUser): Future[RegistrationResponse]
 
-    def act(action: Command.Action): Future[CommandValidation.Verified[Outcome.Confirmed]]
+    def act(action: Command.Action): Future[ActionResponse]
 
   }
 

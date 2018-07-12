@@ -24,6 +24,7 @@ package io.scalac.intro.task.marshalling
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json._
 import io.scalac.intro.task.model._
+import cats.data.NonEmptyList
 
 trait JsonProtocols extends SprayJsonSupport with DefaultJsonProtocol {
 
@@ -72,6 +73,16 @@ trait JsonProtocols extends SprayJsonSupport with DefaultJsonProtocol {
     }
     override def write(videoId: VideoId) = JsNumber(videoId.id)
   }
+
+  def collectErrors(list: NonEmptyList[CommandValidation.InvalidInput]): JsObject =
+    JsObject(
+      "errors" -> JsArray(list.map(err => JsString(err.detail)).toList: _*)
+    )
+
+  def registrationFailure(error: Outcome.RegistrationError): JsObject =
+    JsObject(
+      "error" -> JsString(error.detail)
+    )
 
   implicit val userJsonFormat    = jsonFormat4(Command.RegisterUser)
   implicit val actionJsonFormat  = jsonFormat3(Command.Action)

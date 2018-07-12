@@ -33,11 +33,9 @@ import scala.concurrent.Future
 
 class ActorVideoService(implicit system: ActorSystem) extends UserVideoService {
   import ActorVideoService._
+  import UserVideoService._
 
-  type RegistrationResponse = Validated[Outcome.RegistrationError, Outcome.Confirmed]
-  type ActionResponse       = CommandValidation.Verified[Outcome.Confirmed]
-
-  lazy val registry: ActorRef = system.actorOf(Props[UserRegistry], "user-registry")
+  val registry = system.actorOf(Props[UserRegistry], "user-registry")
 
   implicit val timeout = Timeout(1 second)
 
