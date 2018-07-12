@@ -98,4 +98,91 @@ class RoutesTest
     }
   }
 
+  "receiving a POST request with error in the input" should {
+    "respond with Bad Request for missing object in the /register endpoint" in {
+      Post("/register") ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+    }
+
+    "respond with Bad Request for missing object in the /action endpoint" in {
+      Post("/action") ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+    }
+
+    "respond with Bad Request for any missing field in the /register endpoint" in {
+
+      val nogender = JsObject(
+        "userName" -> JsString("David"),
+        "email"    -> JsString("david@gmail.com"),
+        "age"      -> JsNumber(28)
+      )
+
+      Post("/register", nogender) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+
+      val noage = JsObject(
+        "userName" -> JsString("David"),
+        "email"    -> JsString("david@gmail.com"),
+        "gender"   -> JsNumber(1)
+      )
+
+      Post("/register", noage) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+
+      val noemail = JsObject(
+        "userName" -> JsString("David"),
+        "age"      -> JsNumber(28),
+        "gender"   -> JsNumber(1)
+      )
+
+      Post("/register", noemail) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+
+      val noname = JsObject(
+        "email"  -> JsString("david@gmail.com"),
+        "age"    -> JsNumber(28),
+        "gender" -> JsNumber(1)
+      )
+
+      Post("/register", noname) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+    }
+
+    "respond with Bad Request for any missing field in the /action endpoint" in {
+
+      val noaction = JsObject(
+        "userId"  -> JsNumber(9696345L),
+        "videoId" -> JsNumber(4324556L)
+      )
+
+      Post("/action", noaction) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+
+      val novideo = JsObject(
+        "userId"   -> JsNumber(9696345L),
+        "actionId" -> JsNumber(3)
+      )
+
+      Post("/action", novideo) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+
+      val nouser = JsObject(
+        "videoId"  -> JsNumber(4324556L),
+        "actionId" -> JsNumber(3)
+      )
+
+      Post("/action", nouser) ~> Route.seal(sut) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+    }
+  }
+
 }
