@@ -82,6 +82,7 @@ class UserRegistry extends Actor {
           }
 
       handler ! CurrentVideo(replyTo = sender)
+
     case msg @ ActionMessage(Action(uid, vid, action)) =>
       registry.get(uid) match {
         case Some(handler) =>
@@ -94,7 +95,7 @@ class UserRegistry extends Actor {
 
 }
 
-class ActionHandler(id: UserId) extends Actor {
+class ActionHandler(id: UserId) extends Actor with ActorLogging {
   import ActorVideoService._
 
   var currentVideo = 1L
@@ -103,9 +104,15 @@ class ActionHandler(id: UserId) extends Actor {
   override def receive = {
     case CurrentVideo(replyTo) =>
       replyTo ! Outcome.Confirmed(id, VideoId(currentVideo)).valid[Outcome.RegistrationError]
+
     case ActionMessage(Action(_, video, _)) if video.id != currentVideo =>
       sender ! CommandValidation.InvalidAction.invalidNel
 
+    case ActionMessage(Action(_, video, action)) =>
+      sender ! Outcome.Confirmed(id, VideoId(nextVideo)).valid
+      currentVideo = nextVideo
+      nextVideo += 1
+      log.info("User {} did {} video {}", id.id, action, video.id)
   }
 
 }

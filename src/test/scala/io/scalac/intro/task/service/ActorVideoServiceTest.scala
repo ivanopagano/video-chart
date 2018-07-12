@@ -80,18 +80,20 @@ class ActorVideoServiceTest
 
   "An ActionHandler actor" should {
 
+    val actorUser = UserId(1)
+
     "respond to a current video request with the correct user id" in withActionHandlerActor(
-      UserId(1L)
+      actorUser
     ) { handler =>
       handler ! CurrentVideo(testActor)
 
       val confirm = expectMsgClass(classOf[Valid[Outcome.Confirmed]])
 
-      confirm.a.userId shouldEqual UserId(1L)
+      confirm.a.userId shouldEqual actorUser
     }
 
     "respond to consecutive video requests with the same message" in withActionHandlerActor(
-      UserId(1L)
+      actorUser
     ) { handler =>
       handler ! CurrentVideo(testActor)
 
@@ -102,8 +104,24 @@ class ActorVideoServiceTest
       expectMsg(confirm)
     }
 
+    "respond with a new video for a correct action" in withActionHandlerActor(
+      actorUser
+    ) { handler =>
+      handler ! CurrentVideo(testActor)
+
+      val currentVideo = expectMsgClass(classOf[Valid[Outcome.Confirmed]]).a.videoId
+
+      val action = Command.Action(UserId(1), currentVideo, Like)
+      handler ! ActionMessage(action)
+
+      val confirm = expectMsgClass(classOf[Valid[Outcome.Confirmed]])
+
+      confirm.a.userId shouldBe actorUser
+      confirm.a.videoId should not be currentVideo
+    }
+
     "reject video actions where the video id doesn't match the current video" in withActionHandlerActor(
-      UserId(1L)
+      actorUser
     ) { handler =>
       handler ! CurrentVideo(testActor)
 
