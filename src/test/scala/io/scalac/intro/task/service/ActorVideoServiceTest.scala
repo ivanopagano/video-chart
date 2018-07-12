@@ -57,7 +57,7 @@ class ActorVideoServiceTest
 
     }
 
-    "return the response when a user register with an existing email (idempotent calls)" in withRegistryActor {
+    "return the same response when a user registers again an existing email (idempotent calls)" in withRegistryActor {
       registry =>
         implicit val timeout = Timeout(100 millis)
 
