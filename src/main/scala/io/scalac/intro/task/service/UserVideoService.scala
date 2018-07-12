@@ -24,7 +24,6 @@ package io.scalac.intro.task.service
 import akka.actor._
 import akka.util.Timeout
 import akka.pattern.ask
-import cats.data.Validated
 import cats.syntax.validated._
 import io.scalac.intro.task.model._
 import io.scalac.intro.task.model.Command._
@@ -93,30 +92,62 @@ class UserRegistry extends Actor {
 
 }
 
-class ActionHandler(id: UserId) extends Actor with ActorLogging {
+class ActionHandler(id: UserId, chart: ActionHandler.PlayChart) extends Actor with ActorLogging {
   import ActorVideoService._
 
-  var currentVideo = 1L
-  var nextVideo    = currentVideo + 1
+  var nowPlaying = chart.nextVideo()
+  var nextVideo  = chart.nextVideo()
 
   override def receive = {
     case CurrentVideo(replyTo) =>
-      replyTo ! Outcome.Confirmed(id, VideoId(currentVideo)).valid[Outcome.RegistrationError]
+      replyTo ! Outcome.Confirmed(id, nowPlaying).valid[Outcome.RegistrationError]
 
-    case ActionMessage(Action(_, video, _)) if video.id != currentVideo =>
+    case ActionMessage(Action(_, video, _)) if video != nowPlaying =>
       sender ! CommandValidation.InvalidAction.invalidNel
 
     case ActionMessage(Action(_, video, action)) =>
-      sender ! Outcome.Confirmed(id, VideoId(nextVideo)).valid
-      currentVideo = nextVideo
-      nextVideo += 1
+      sender ! Outcome.Confirmed(id, nextVideo).valid
+      nowPlaying = nextVideo
+      nextVideo = chart.nextVideo()
       log.info("User {} did {} video {}", id.id, action, video.id)
+      log.info("current playchart:\n{}", chart.report)
   }
 
 }
 
 object ActionHandler {
 
-  def props(id: UserId) = Props(new ActionHandler(id))
+  trait PlayChart {
+    def nextVideo(): VideoId
+    def report: String
+  }
+
+  def props(id: UserId) = Props(new ActionHandler(id, new PriorityChart))
+
+  private class PriorityChart extends PlayChart {
+    import scala.collection.mutable.PriorityQueue
+    import scala.math.{ Ordering, abs }
+
+    private[this] case class ChartEntry(id: VideoId, played: Int)
+
+    implicit private[this] val chartOrdering: Ordering[ChartEntry] =
+      Ordering.by((_: ChartEntry).played).reverse
+
+    private[this] val queue: PriorityQueue[ChartEntry] = PriorityQueue(fillChart(): _*)
+
+    override def nextVideo() = {
+      val next = queue.dequeue
+      queue.enqueue(next.copy(played = next.played + 1))
+      next.id
+    }
+
+    override def report =
+      queue.clone.dequeueAll.mkString("\n")
+
+    private[this] def fillChart() =
+      List
+        .fill(10)(abs(scala.util.Random.nextLong))
+        .map(id => ChartEntry(VideoId(id), played = 0))
+  }
 
 }
