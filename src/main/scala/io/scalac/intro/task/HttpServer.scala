@@ -39,7 +39,7 @@ object HttpServer extends App with Playlist {
   implicit val system = ActorSystem("xite")
   implicit val mat    = ActorMaterializer()
 
-  implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec = system.dispatcher
 
   lazy val service = new ActorVideoService
 
